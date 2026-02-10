@@ -23,11 +23,6 @@
 pip install torch tiktoken matplotlib numpy requests transformers
 ```
 
-### Clone Reference Repository
-```bash
-git clone --depth 1 https://github.com/rasbt/LLMs-from-scratch.git
-```
-
 ---
 
 ## 📖 Notebook Features
