@@ -16,6 +16,20 @@
 
 ---
 
+## 🧠 New Beginner Complete Pack (Age 15+)
+
+- **Master beginner notebook**: `LLM_From_Scratch_Teen_Friendly_Master_Notebook.ipynb`
+  - Full path from basic math to building/training/generating with a tiny GPT
+  - Includes attention heatmaps, causal mask visualizations, and interactive generation controls
+- **Student practice notebook**: `LLM_From_Scratch_Teen_Friendly_Student_Workbook.ipynb`
+  - Exercise-first workbook with guided TODOs, plots, and interactive parameter experiments
+- **PPT deck content**: `LLM_From_Scratch_Teen_Friendly_PPT_Content.md`
+  - 21-slide complete structure for PowerPoint / Google Slides
+- **PPT speaker notes**: `LLM_From_Scratch_Teen_Friendly_PPT_Speaker_Notes.md`
+  - Delivery flow, timing, discussion prompts, and common Q&A support
+
+---
+
 ## 🔧 Setup Instructions
 
 ### Prerequisites
