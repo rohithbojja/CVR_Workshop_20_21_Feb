@@ -61,9 +61,3 @@ Ask each student to answer:
 - Training steps: 20 -> 50 -> 100
 - Sequence length: 8 -> 16 -> 32
 
-
-## Running the HTML visual lab
-- Open `LLM_From_Scratch_Deep_Interactive_Visualizer.html` directly in the browser.
-- Use tab order: Math -> Tokenization -> Embeddings -> Attention -> Causal Mask -> Sampling.
-- For each tab, ask students to change one control and explain what changed.
-

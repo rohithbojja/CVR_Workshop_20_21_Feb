@@ -25,8 +25,6 @@
   - Exercise-first workbook with guided TODOs, plots, and interactive parameter experiments
 - **PPT deck content**: `LLM_From_Scratch_Teen_Friendly_PPT_Content.md`
   - 21-slide complete structure for PowerPoint / Google Slides
-- **Deep HTML visual lab**: `LLM_From_Scratch_Deep_Interactive_Visualizer.html`
-  - Browser-based interactive modules for math, tokenization, embedding space, attention heatmaps, causal masks, and sampling controls
 - **PPT speaker notes**: `LLM_From_Scratch_Teen_Friendly_PPT_Speaker_Notes.md`
   - Delivery flow, timing, discussion prompts, and common Q&A support
 

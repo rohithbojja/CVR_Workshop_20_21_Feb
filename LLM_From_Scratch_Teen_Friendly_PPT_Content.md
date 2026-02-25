@@ -201,14 +201,3 @@ Optional controls: temperature, top-k, top-p
 - Present before/after result
 - Explain what changed and why
 
----
-
-## Slide 26 — HTML Visual Lab (Deep Interactive)
-Use `LLM_From_Scratch_Deep_Interactive_Visualizer.html` live in class:
-- Math playground
-- Tokenization timeline
-- Embedding explorer
-- Attention heatmap simulator
-- Causal mask visualizer
-- Sampling controls (temperature + top-k)
-
