@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLM From Scratch — Deep Interactive Visualizer</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #131a2e;
+      --panel-2: #1a2340;
+      --text: #eef3ff;
+      --muted: #a8b3d1;
+      --accent: #7aa2ff;
+      --good: #49d17d;
+      --warn: #ffcc66;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: linear-gradient(180deg, #090d1a, #0f1630);
+      color: var(--text);
+    }
+    header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid #2a3355;
+      background: rgba(11,16,32,.9);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    h1 { margin: 0; font-size: 1.2rem; }
+    .sub { color: var(--muted); margin-top: .25rem; font-size: .92rem; }
+    .layout { display: grid; grid-template-columns: 270px 1fr; min-height: calc(100vh - 72px); }
+    nav {
+      border-right: 1px solid #2a3355;
+      background: var(--panel);
+      padding: .75rem;
+    }
+    .tab {
+      width: 100%; text-align: left;
+      background: transparent; color: var(--text);
+      border: 1px solid transparent; border-radius: 10px;
+      padding: .65rem .7rem; margin-bottom: .45rem; cursor: pointer;
+    }
+    .tab:hover, .tab.active { background: var(--panel-2); border-color: #324172; }
+    main { padding: 1rem; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .grid { display: grid; gap: 1rem; grid-template-columns: 340px 1fr; }
+    .card {
+      background: rgba(20, 29, 54, .95);
+      border: 1px solid #2f3b64;
+      border-radius: 14px;
+      padding: .9rem;
+    }
+    .card h3 { margin: 0 0 .6rem; font-size: 1rem; }
+    label { display: block; font-size: .86rem; color: var(--muted); margin-top: .5rem; }
+    input[type="range"], textarea, input[type="text"] { width: 100%; }
+    input, textarea, button, select {
+      background: #0f1730; color: var(--text);
+      border: 1px solid #334170; border-radius: 8px;
+      padding: .5rem .55rem;
+      margin-top: .3rem;
+    }
+    button { cursor: pointer; }
+    .row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+    .pill { background: #0f1730; border: 1px solid #334170; border-radius: 999px; padding: .2rem .6rem; font-size: .8rem; color: var(--muted); }
+    canvas { width: 100%; background: #0a1022; border: 1px solid #2f3b64; border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    td, th { border: 1px solid #30406f; padding: .35rem; text-align: center; }
+    .hint { color: var(--muted); font-size: .85rem; margin-top: .45rem; }
+    .ok { color: var(--good); }
+    .warn { color: var(--warn); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { border-right: none; border-bottom: 1px solid #2a3355; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>LLM From Scratch — Deep Interactive Visualizer</h1>
+  <div class="sub">Complete visual + interactive learning lab (math → tokenization → embeddings → attention → masking → sampling)</div>
+</header>
+<div class="layout">
+  <nav>
+    <button class="tab active" data-tab="math">1) Math Playground</button>
+    <button class="tab" data-tab="token">2) Tokenization Lab</button>
+    <button class="tab" data-tab="embed">3) Embedding Space Explorer</button>
+    <button class="tab" data-tab="attn">4) Attention Heatmap Lab</button>
+    <button class="tab" data-tab="mask">5) Causal Mask Visualizer</button>
+    <button class="tab" data-tab="sample">6) Sampling Controller</button>
+  </nav>
+
+  <main>
+    <section id="math" class="panel active">
+      <div class="grid">
+        <div class="card">
+          <h3>Controls</h3>
+          <label>Vector A (comma-separated)</label>
+          <input id="vecA" type="text" value="2,4,-1,3" />
+          <label>Vector B (comma-separated)</label>
+          <input id="vecB" type="text" value="1,2,0,3" />
+          <label>Temperature (softmax)</label>
+          <input id="temp" type="range" min="0.1" max="3" step="0.1" value="1.0" />
+          <div id="tempVal" class="pill">T=1.0</div>
+          <button id="runMath">Run math visualization</button>
+          <div class="hint">Try opposite vectors to get negative dot product.</div>
+        </div>
+        <div class="card">
+          <h3>Output</h3>
+          <div id="mathStats" class="mono"></div>
+          <canvas id="softmaxCanvas" height="210"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section id="token" class="panel">
+      <div class="grid">
+        <div class="card">
+          <h3>Input text</h3>
+          <textarea id="tokenText" rows="8">LLMs are amazing because they learn patterns from text data and generate new text.</textarea>
+          <button id="tokenizeBtn">Tokenize + Build Vocabulary</button>
+          <div class="hint">Whitespace tokenizer (teaching version). You can later replace with BPE.</div>
+        </div>
+        <div class="card">
+          <h3>Token timeline & vocabulary</h3>
+          <canvas id="tokenCanvas" height="220"></canvas>
+          <div id="vocabTable"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="embed" class="panel">
+      <div class="grid">
+        <div class="card">
+          <h3>Embedding generator</h3>
+          <label>Number of tokens</label>
+          <input id="embN" type="range" min="6" max="40" step="1" value="16" />
+          <div id="embNVal" class="pill">tokens=16</div>
+          <label>Cluster spread</label>
+          <input id="embSpread" type="range" min="0.2" max="3.0" step="0.1" value="1.2" />
+          <div id="embSpreadVal" class="pill">spread=1.2</div>
+          <button id="regenEmb">Regenerate points</button>
+        </div>
+        <div class="card">
+          <h3>2D embedding projection (simulated)</h3>
+          <canvas id="embCanvas" height="320"></canvas>
+          <div class="hint">Simulates how semantically similar tokens form nearby groups.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="attn" class="panel">
+      <div class="grid">
+        <div class="card">
+          <h3>Attention settings</h3>
+          <label>Tokens (space-separated)</label>
+          <input id="attnTokens" type="text" value="I love learning AI today" />
+          <label>Sharpness (lower = flatter, higher = sharper)</label>
+          <input id="attnSharp" type="range" min="0.4" max="4" step="0.1" value="1.8" />
+          <div id="attnSharpVal" class="pill">sharpness=1.8</div>
+          <button id="runAttn">Generate attention heatmap</button>
+          <div class="hint">This is an educational approximation of attention weight behavior.</div>
+        </div>
+        <div class="card">
+          <h3>Attention heatmap</h3>
+          <canvas id="attnCanvas" height="360"></canvas>
+          <div id="attnLegend" class="hint"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="mask" class="panel">
+      <div class="grid">
+        <div class="card">
+          <h3>Causal mask controls</h3>
+          <label>Sequence length</label>
+          <input id="maskLen" type="range" min="3" max="24" step="1" value="10" />
+          <div id="maskLenVal" class="pill">T=10</div>
+          <button id="drawMask">Draw mask</button>
+          <div class="hint">White=can attend, dark=blocked future tokens.</div>
+        </div>
+        <div class="card">
+          <h3>Mask matrix</h3>
+          <canvas id="maskCanvas" height="360"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section id="sample" class="panel">
+      <div class="grid">
+        <div class="card">
+          <h3>Sampling controls</h3>
+          <label>Fake logits (comma-separated)</label>
+          <input id="logits" type="text" value="3.2, 2.0, 1.1, 0.4, -0.2, -1.0" />
+          <label>Temperature</label>
+          <input id="sTemp" type="range" min="0.2" max="2.5" step="0.1" value="1.0" />
+          <div id="sTempVal" class="pill">T=1.0</div>
+          <label>Top-k (0 means disabled)</label>
+          <input id="topK" type="range" min="0" max="6" step="1" value="0" />
+          <div id="topKVal" class="pill">top_k=0</div>
+          <button id="runSampling">Apply sampling transforms</button>
+        </div>
+        <div class="card">
+          <h3>Probability distribution</h3>
+          <canvas id="sampleCanvas" height="240"></canvas>
+          <div id="sampleText" class="mono"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      $(btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // Utility helpers
+  const parseNums = (s) => s.split(',').map(x => Number(x.trim())).filter(x => !Number.isNaN(x));
+  const dot = (a,b) => a.reduce((acc,v,i) => acc + v*(b[i] ?? 0), 0);
+  const norm = (a) => Math.sqrt(a.reduce((acc,v)=>acc+v*v,0));
+  const softmax = (arr, temp=1) => {
+    const scaled = arr.map(v => v / temp);
+    const m = Math.max(...scaled);
+    const ex = scaled.map(v => Math.exp(v - m));
+    const s = ex.reduce((x,y)=>x+y,0);
+    return ex.map(v => v/s);
+  };
+  const clearCanvas = (c) => {
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    ctx.fillStyle = '#0a1022';
+    ctx.fillRect(0,0,c.width,c.height);
+    return ctx;
+  };
+
+  function drawBar(canvas, values, labels, color='#7aa2ff') {
+    const ctx = clearCanvas(canvas);
+    const W=canvas.width, H=canvas.height;
+    const pad=40;
+    const max=Math.max(...values, 1e-6);
+    const bw=(W-pad*2)/values.length * .75;
+    values.forEach((v,i)=>{
+      const x = pad + i*((W-pad*2)/values.length) + 8;
+      const h = (H-pad*2)*(v/max);
+      const y = H-pad-h;
+      ctx.fillStyle = color;
+      ctx.fillRect(x,y,bw,h);
+      ctx.fillStyle = '#dce7ff';
+      ctx.fillText(labels[i], x, H-12);
+      ctx.fillText(v.toFixed(2), x, y-6);
+    });
+  }
+
+  // Math panel
+  function runMath() {
+    const A = parseNums($('vecA').value);
+    const B = parseNums($('vecB').value);
+    const T = Number($('temp').value);
+    $('tempVal').textContent = `T=${T.toFixed(1)}`;
+    if (A.length === 0 || B.length === 0 || A.length !== B.length) {
+      $('mathStats').innerHTML = '<span class="warn">Vectors must be same length and non-empty.</span>';
+      return;
+    }
+    const dp = dot(A,B);
+    const cos = dp / (norm(A)*norm(B) + 1e-9);
+    const probs = softmax(B, T);
+    $('mathStats').innerHTML = `dot(A,B)=${dp.toFixed(4)}\ncosine=${cos.toFixed(4)}\nA=[${A.join(', ')}]\nB=[${B.join(', ')}]`;
+    drawBar($('softmaxCanvas'), probs, probs.map((_,i)=>`id${i}`), '#49d17d');
+  }
+  $('runMath').addEventListener('click', runMath);
+  $('temp').addEventListener('input', runMath);
+
+  // Token panel
+  function tokenizeLab() {
+    const txt = $('tokenText').value.toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+    const tokens = txt.length ? txt.split(' ') : [];
+    const uniq = [...new Set(tokens)].sort();
+    const vocab = Object.fromEntries(uniq.map((t,i)=>[t,i]));
+    const ids = tokens.map(t => vocab[t]);
+
+    // timeline
+    const c=$('tokenCanvas');
+    const ctx=clearCanvas(c);
+    const W=c.width,H=c.height,pad=30;
+    const step=(W-pad*2)/Math.max(tokens.length,1);
+    tokens.forEach((tok,i)=>{
+      const x=pad + i*step + step/2;
+      const y=H/2;
+      ctx.fillStyle='#7aa2ff'; ctx.beginPath(); ctx.arc(x,y,8,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#dce7ff';
+      ctx.fillText(tok, x-14, y-14);
+      ctx.fillText(String(ids[i]), x-4, y+22);
+    });
+
+    // table
+    let html = '<table><tr><th>Token</th><th>ID</th></tr>';
+    uniq.forEach(t => html += `<tr><td>${t}</td><td>${vocab[t]}</td></tr>`);
+    html += '</table>';
+    $('vocabTable').innerHTML = html;
+  }
+  $('tokenizeBtn').addEventListener('click', tokenizeLab);
+
+  // Embedding panel
+  function randn() {
+    let u=0,v=0;
+    while(!u) u=Math.random(); while(!v) v=Math.random();
+    return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+  }
+  function drawEmbeddings() {
+    const n = Number($('embN').value);
+    const spread = Number($('embSpread').value);
+    $('embNVal').textContent = `tokens=${n}`;
+    $('embSpreadVal').textContent = `spread=${spread.toFixed(1)}`;
+
+    const c=$('embCanvas'); const ctx=clearCanvas(c);
+    const W=c.width,H=c.height;
+    const centers=[[W*0.28,H*0.35],[W*0.6,H*0.3],[W*0.45,H*0.68]];
+    const colors=['#7aa2ff','#49d17d','#ffcc66'];
+    for(let i=0;i<n;i++){
+      const g=i%3; const [cx,cy]=centers[g];
+      const x=cx + randn()*26*spread;
+      const y=cy + randn()*26*spread;
+      ctx.fillStyle=colors[g];
+      ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#dce7ff';
+      ctx.fillText(`t${i}`, x+6, y-6);
+    }
+  }
+  $('regenEmb').addEventListener('click', drawEmbeddings);
+  $('embN').addEventListener('input', drawEmbeddings);
+  $('embSpread').addEventListener('input', drawEmbeddings);
+
+  // Attention panel
+  function drawHeatmap(canvas, matrix, labels) {
+    const ctx = clearCanvas(canvas);
+    const W=canvas.width,H=canvas.height,pad=50;
+    const n=matrix.length;
+    const cell=Math.min((W-pad*2)/n,(H-pad*2)/n);
+    for(let r=0;r<n;r++){
+      for(let c=0;c<n;c++){
+        const v=matrix[r][c];
+        const b=Math.floor(255*v);
+        ctx.fillStyle=`rgb(${20+b}, ${40+b}, ${100+b})`;
+        ctx.fillRect(pad+c*cell,pad+r*cell,cell-1,cell-1);
+      }
+    }
+    ctx.fillStyle='#dce7ff';
+    labels.forEach((t,i)=>{
+      ctx.fillText(t, pad+i*cell+3, pad-8);
+      ctx.fillText(t, 6, pad+i*cell+cell/2);
+    });
+  }
+  function runAttention() {
+    const tokens = $('attnTokens').value.trim().split(/\s+/).filter(Boolean);
+    const sharp = Number($('attnSharp').value);
+    $('attnSharpVal').textContent = `sharpness=${sharp.toFixed(1)}`;
+    const n=tokens.length;
+    if (n<2 || n>12) {
+      $('attnLegend').innerHTML = '<span class="warn">Use 2 to 12 tokens for clear visualization.</span>';
+      return;
+    }
+    const m=[];
+    for(let i=0;i<n;i++){
+      // educational pattern: self + neighbors + topic token boosts
+      const raw=[];
+      for(let j=0;j<n;j++){
+        const dist=Math.abs(i-j);
+        let score=1/(1+dist);
+        if (i===j) score += 0.35;
+        if (tokens[j].toLowerCase().includes('ai')) score += 0.25;
+        raw.push(score*sharp + Math.random()*0.04);
+      }
+      m.push(softmax(raw, 1.0));
+    }
+    drawHeatmap($('attnCanvas'), m, tokens);
+    $('attnLegend').innerHTML = '<span class="ok">Rows sum to ~1.0:</span> each row is query token attention over key tokens.';
+  }
+  $('runAttn').addEventListener('click', runAttention);
+  $('attnSharp').addEventListener('input', runAttention);
+
+  // Mask panel
+  function drawMask() {
+    const T = Number($('maskLen').value);
+    $('maskLenVal').textContent = `T=${T}`;
+    const c=$('maskCanvas'); const ctx=clearCanvas(c);
+    const W=c.width,H=c.height,pad=34;
+    const cell=Math.min((W-pad*2)/T,(H-pad*2)/T);
+    for(let r=0;r<T;r++){
+      for(let col=0;col<T;col++){
+        const allowed = col <= r;
+        ctx.fillStyle = allowed ? '#d9e6ff' : '#1a2749';
+        ctx.fillRect(pad+col*cell,pad+r*cell,cell-1,cell-1);
+      }
+    }
+    ctx.fillStyle='#c4d2ff';
+    ctx.fillText('query → rows, key → cols', 6, 16);
+  }
+  $('drawMask').addEventListener('click', drawMask);
+  $('maskLen').addEventListener('input', drawMask);
+
+  // Sampling panel
+  function runSampling() {
+    const logits = parseNums($('logits').value);
+    const T = Number($('sTemp').value);
+    const k = Number($('topK').value);
+    $('sTempVal').textContent = `T=${T.toFixed(1)}`;
+    $('topKVal').textContent = `top_k=${k}`;
+    if (!logits.length) return;
+
+    let adjusted = logits.map(v => v / T);
+    if (k > 0 && k < adjusted.length) {
+      const sorted = [...adjusted].sort((a,b)=>b-a);
+      const kth = sorted[k-1];
+      adjusted = adjusted.map(v => v < kth ? -9999 : v);
+    }
+    const probs = softmax(adjusted, 1.0);
+    drawBar($('sampleCanvas'), probs, probs.map((_,i)=>`tok${i}`), '#ffcc66');
+
+    const topIdx = probs
+      .map((p,i)=>({i,p}))
+      .sort((a,b)=>b.p-a.p)
+      .slice(0,3)
+      .map(o => `tok${o.i}:${o.p.toFixed(3)}`)
+      .join(' | ');
+    $('sampleText').textContent = `Top candidates => ${topIdx}`;
+  }
+  $('runSampling').addEventListener('click', runSampling);
+  $('sTemp').addEventListener('input', runSampling);
+  $('topK').addEventListener('input', runSampling);
+
+  // initial render
+  runMath(); tokenizeLab(); drawEmbeddings(); runAttention(); drawMask(); runSampling();
+</script>
+</body>
+</html>
